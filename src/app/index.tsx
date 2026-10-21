@@ -8,91 +8,102 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import {Button } from '@/components/ui/button'
+import {Text } from '@/components/ui/text'
+import { useRouter } from 'expo-router';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
 
 export default function HomeScreen() {
+  const router = useRouter();
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <ThemedView > {/*1*/}
+      
+    <ThemedView style={styles.welcomeSection}> {/*2*/}
+      <ThemedText style={styles.appTitle}>
+        Job Application Tracker
+      </ThemedText>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <ThemedText style={styles.heading}>
+        Your next opportunity starts here.
+      </ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+      <ThemedText style={styles.description}>
+        Keep your job applications organised, track your
+        progress and stay ready for your next opportunity.
+      </ThemedText>
+      $nbsp;
+      &nbsp;
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
+     
+     <ThemedView style={styles.featureCard}> {/*3*/}
+     <ThemedText style={styles.featureTitle}>
+       Keep your job search organised
+     </ThemedText>
+
+     <ThemedText style={styles.featureDescription}>
+      ✓ Track your applications{"\n"}
+      ✓ Prepare for interviews{"\n"}
+      ✓ Remember your follow-ups
+     </ThemedText>
+    </ThemedView> {/*3*/}
+    </ThemedView> {/*2*/}
+
+      <Button onPress={() => router.push('/signin')}>
+        <Text>Sign In</Text>
+      </Button>
+      <Button onPress={() => router.push('/signup')}>
+        <Text>Sign Up</Text>
+      </Button>
+
+      <ThemedText>Made by Ashley Ashirai Hlatshwayo of GHOSTTECH.Ashirai</ThemedText>
+    </ThemedView> /*1*/  );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  welcomeSection: {
+    padding: 20,
+    marginBottom: 24,
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+
+  appTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 20,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+
+  heading: {
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 39,
+    marginBottom: 12,
   },
-  title: {
-    textAlign: 'center',
+
+  description: {
+    fontSize: 16,
+    lineHeight: 24,
+    opacity: 0.8,
   },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
+
+  featureCard: {
+  backgroundColor: '#EEF1FF',
+  padding: 20,
+  marginHorizontal: 20,
+  marginBottom: 24,
+  borderRadius: 16,
+},
+
+featureTitle: {
+  fontSize: 18,
+  fontWeight: '700',
+  marginBottom: 12,
+  color: '#233B83',
+},
+
+featureDescription: {
+  fontSize: 15,
+  lineHeight: 28,
+  color: '#536078',
+},
+}
+);
+
