@@ -1,0 +1,4 @@
+job-tracker-logo.svg is the Lucide "briefcase-business" icon.
+Source: https://github.com/lucide-icons/lucide/blob/main/icons/briefcase-business.svg
+Lucide icons are distributed under the ISC License: https://github.com/lucide-icons/lucide/blob/main/LICENSE
+The icon stroke color was changed to white for use on the app's royal-blue logo background.

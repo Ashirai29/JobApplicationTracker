@@ -1,5 +1,4 @@
 import { useRouter } from "expo-router";
-import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,320 +9,383 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AppLogo } from "@/components/app-logo";
+import { JobTrackerNav } from "@/components/job-tracker-nav";
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { Colors, MaxContentWidth, Spacing } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { firebaseAuth } from "@/firebase";
+import { Colors, MaxContentWidth } from "@/constants/theme";
+import { useJobTracker } from "@/hooks/use-job-tracker";
+import { useAuth } from "@/services/auth-context";
 
-const overviewItems = [
-  { label: "Applications", value: "0", detail: "No applications yet" },
-  { label: "Interviews", value: "0", detail: "Keep an eye on progress" },
-  { label: "Follow-ups", value: "0", detail: "Nothing due right now" },
-];
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function formatDate(value: string) {
+  if (!value) return "No due date";
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme() === "dark" ? "dark" : "light";
-  const colors = Colors[colorScheme];
-  const [user, setUser] = useState<User | null>(firebaseAuth.currentUser);
+  const { currentUser, loading: authLoading, logout } = useAuth();
+  const { applications, tasks, loading, error } = useJobTracker(
+    currentUser?.uid,
+  );
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [error, setError] = useState("");
+  const [signOutError, setSignOutError] = useState("");
 
   useEffect(() => {
-    return onAuthStateChanged(firebaseAuth, setUser);
-  }, []);
+    if (!authLoading && !currentUser) router.replace("/");
+  }, [authLoading, currentUser, router]);
+
+  if (authLoading || !currentUser || loading) {
+    return (
+      <SafeAreaView style={styles.loading}>
+        <ActivityIndicator color={Colors.light.text} />
+      </SafeAreaView>
+    );
+  }
+
+  const activeApplications = applications.filter(
+    (application) => application.status !== "Archived",
+  );
+  const openTasks = tasks.filter((task) => !task.completed);
+  const counts = [
+    { label: "Applications", value: activeApplications.length },
+    {
+      label: "In progress",
+      value: activeApplications.filter((application) =>
+        ["Applied", "Assessment", "Interview", "Offer"].includes(
+          application.status,
+        ),
+      ).length,
+    },
+    {
+      label: "Interviews",
+      value: activeApplications.filter(
+        (application) => application.status === "Interview",
+      ).length,
+    },
+    {
+      label: "Offers",
+      value: activeApplications.filter((application) =>
+        ["Offer", "Accepted"].includes(application.status),
+      ).length,
+    },
+  ];
+  const upcomingTasks = openTasks.slice(0, 4);
+  const recentApplications = activeApplications.slice(0, 4);
+  const firstName =
+    currentUser.displayName?.trim().split(/\s+/)[0] ??
+    currentUser.email?.split("@")[0] ??
+    "there";
 
   const handleSignOut = async () => {
-    setError("");
+    setSignOutError("");
     setIsSigningOut(true);
     try {
-      await signOut(firebaseAuth);
-      router.replace("/auth");
-    } catch {
-      setError("Could not sign out. Please try again.");
+      await logout();
+      router.replace("/");
+    } catch (logoutError: unknown) {
+      setSignOutError(
+        logoutError instanceof Error
+          ? logoutError.message
+          : "Could not sign out. Please try again.",
+      );
     } finally {
       setIsSigningOut(false);
     }
   };
 
-  const firstName = user?.displayName?.trim().split(/\s+/)[0] ??
-    user?.email?.split("@")[0] ??
-    "there";
-
   return (
-    <SafeAreaView
-      edges={["top", "left", "right"]}
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
-    >
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <ThemedView style={styles.container}>
+        <View style={styles.content}>
           <View style={styles.header}>
-            <View style={styles.brand}>
-              <View style={styles.brandMark}>
-                <ThemedText style={styles.brandMarkText}>J</ThemedText>
-              </View>
-              <ThemedText style={styles.brandName}>Job tracker</ThemedText>
-            </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Sign out"
-              disabled={isSigningOut}
-              onPress={handleSignOut}
+              accessibilityLabel="Return to home"
+              onPress={() => router.replace("/")}
               style={({ pressed }) => [
-                styles.signOutButton,
-                { borderColor: colors.backgroundSelected },
+                styles.brand,
                 pressed && styles.pressed,
               ]}
             >
+              <AppLogo size={34} />
+              <ThemedText style={styles.brandName}>JobTrack</ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSigningOut}
+              onPress={() => void handleSignOut()}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
               {isSigningOut ? (
-                <ActivityIndicator size="small" color={colors.text} />
+                <ActivityIndicator color={Colors.light.text} />
               ) : (
-                <ThemedText type="smallBold">Sign out</ThemedText>
+                <ThemedText style={styles.signOut}>Sign out</ThemedText>
               )}
             </Pressable>
           </View>
 
           <View style={styles.greeting}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              YOUR JOB SEARCH
-            </ThemedText>
-            <ThemedText style={styles.heading}>Good to see you, {firstName}.</ThemedText>
-            <ThemedText themeColor="textSecondary">
-              A little progress each day gets you closer to the right opportunity.
-            </ThemedText>
+            <ThemedText style={styles.eyebrow}>{getGreeting()}</ThemedText>
+            <ThemedText style={styles.heading}>Welcome back, {firstName}</ThemedText>
+            {!!currentUser.email && (
+              <ThemedText style={styles.muted}>{currentUser.email}</ThemedText>
+            )}
           </View>
 
-          <View style={styles.overview}>
-            {overviewItems.map((item) => (
-              <ThemedView
-                key={item.label}
-                type="backgroundElement"
-                style={styles.statCard}
-              >
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.label}
-                </ThemedText>
-                <ThemedText style={styles.statValue}>{item.value}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.detail}
-                </ThemedText>
-              </ThemedView>
-            ))}
-          </View>
-
-          <ThemedView
-            type="backgroundElement"
-            style={styles.applicationsCard}
-          >
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeading}>
-                <ThemedText type="subtitle" style={styles.sectionTitle}>
-                  Applications
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Your recent job search activity
-                </ThemedText>
-              </View>
-              <View style={styles.countBadge}>
-                <ThemedText style={styles.countText}>0</ThemedText>
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.emptyState,
-                { borderColor: colors.backgroundSelected },
-              ]}
-            >
-              <View style={styles.emptyIcon}>
-                <ThemedText style={styles.emptyIconText}>↗</ThemedText>
-              </View>
-              <ThemedText style={styles.emptyTitle}>
-                Your next opportunity starts here
-              </ThemedText>
-              <ThemedText
-                themeColor="textSecondary"
-                style={styles.emptyDescription}
-              >
-                Your applications will show up here once you start tracking
-                them.
-              </ThemedText>
-            </View>
-          </ThemedView>
-
-          {error ? (
+          {error || signOutError ? (
             <ThemedText accessibilityRole="alert" style={styles.error}>
-              {error}
+              {error || signOutError}
             </ThemedText>
           ) : null}
 
-          <ThemedText
-            type="small"
-            themeColor="textSecondary"
-            style={styles.footer}
-          >
-            Stay organised. Keep moving forward.
-          </ThemedText>
-        </ThemedView>
+          <View style={styles.hero}>
+            <View style={styles.heroCopy}>
+              <ThemedText style={styles.heroEyebrow}>YOUR NEXT MOVE</ThemedText>
+              <ThemedText style={styles.heroTitle}>
+                Keep every opportunity in view.
+              </ThemedText>
+              <ThemedText style={styles.muted}>
+                Track applications, follow-ups, and progress in one place.
+              </ThemedText>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/application-form")}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <ThemedText style={styles.primaryButtonText}>
+                Add application
+              </ThemedText>
+            </Pressable>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Your overview</ThemedText>
+            <View style={styles.metrics}>
+              {counts.map((item) => (
+                <View key={item.label} style={styles.metric}>
+                  <ThemedText style={styles.metricValue}>{item.value}</ThemedText>
+                  <ThemedText style={styles.muted}>{item.label}</ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <ThemedText style={styles.sectionTitle}>Upcoming tasks</ThemedText>
+              <Pressable onPress={() => router.push("/tasks")}>
+                <ThemedText style={styles.textLink}>View all</ThemedText>
+              </Pressable>
+            </View>
+            {upcomingTasks.length ? (
+              upcomingTasks.map((task) => {
+                const linkedApplication = applications.find(
+                  (application) => application.id === task.applicationId,
+                );
+                return (
+                  <View key={task.id} style={styles.listRow}>
+                    <View style={styles.rowCopy}>
+                      <ThemedText style={styles.rowTitle}>{task.title}</ThemedText>
+                      <ThemedText style={styles.muted}>
+                        {linkedApplication?.company ?? "Personal task"} ·{" "}
+                        {formatDate(task.dueDate)}
+                      </ThemedText>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyCard}>
+                <ThemedText style={styles.rowTitle}>No open tasks</ThemedText>
+                <ThemedText style={styles.muted}>
+                  Add a reminder to keep your next step on track.
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeading}>
+              <ThemedText style={styles.sectionTitle}>
+                Recent applications
+              </ThemedText>
+              <Pressable onPress={() => router.push("/applications")}>
+                <ThemedText style={styles.textLink}>View pipeline</ThemedText>
+              </Pressable>
+            </View>
+            {recentApplications.length ? (
+              recentApplications.map((application) => (
+                <Pressable
+                  key={application.id}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/application/[id]",
+                      params: { id: application.id },
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.listRow,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <View style={styles.rowCopy}>
+                    <ThemedText style={styles.rowTitle}>
+                      {application.title}
+                    </ThemedText>
+                    <ThemedText style={styles.muted}>
+                      {application.company}
+                      {application.location ? ` · ${application.location}` : ""}
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={styles.status}>{application.status}</ThemedText>
+                </Pressable>
+              ))
+            ) : (
+              <View style={styles.emptyCard}>
+                <ThemedText style={styles.rowTitle}>
+                  Your tracker is ready
+                </ThemedText>
+                <ThemedText style={styles.muted}>
+                  Add an opportunity to see it appear here.
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        </View>
       </ScrollView>
+      <JobTrackerNav active="Overview" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  safeArea: { flex: 1, backgroundColor: Colors.light.background },
+  loading: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.light.background,
   },
-  container: {
+  scrollContent: { alignItems: "center", paddingBottom: 24 },
+  content: {
     width: "100%",
     maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.five,
-    gap: Spacing.four,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    gap: 25,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  brand: {
+  brand: { flexDirection: "row", alignItems: "center", gap: 10 },
+  brandName: { fontSize: 18, fontWeight: "700", letterSpacing: -0.4 },
+  signOut: { fontSize: 14, fontWeight: "600" },
+  greeting: { gap: 3 },
+  eyebrow: {
+    color: Colors.light.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  heading: { fontSize: 30, lineHeight: 37, fontWeight: "700", letterSpacing: -1 },
+  muted: { color: Colors.light.textSecondary, fontSize: 15, lineHeight: 23 },
+  error: { color: "#B42318", fontSize: 15, lineHeight: 22 },
+  hero: {
+    backgroundColor: Colors.light.backgroundElement,
+    borderColor: Colors.light.border,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 22,
+    gap: 18,
+  },
+  heroCopy: { gap: 8 },
+  heroEyebrow: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    color: Colors.light.textSecondary,
+  },
+  heroTitle: { fontSize: 25, lineHeight: 32, fontWeight: "700", letterSpacing: -0.5 },
+  primaryButton: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    backgroundColor: Colors.light.text,
+    paddingHorizontal: 17,
+    paddingVertical: 12,
+  },
+  primaryButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  section: { gap: 12 },
+  sectionHeading: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.two,
+    justifyContent: "space-between",
   },
-  brandMark: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#233B83",
-  },
-  brandMarkText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 18,
-  },
-  brandName: {
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  signOutButton: {
-    minWidth: 84,
-    height: 40,
-    paddingHorizontal: Spacing.three,
-    borderWidth: 1,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  greeting: {
-    gap: Spacing.two,
-    paddingTop: Spacing.three,
-  },
-  heading: {
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: "800",
-  },
-  overview: {
+  sectionTitle: { fontSize: 18, fontWeight: "700", letterSpacing: -0.3 },
+  metrics: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: Spacing.two,
+    gap: 10,
   },
-  statCard: {
+  metric: {
     flexGrow: 1,
-    flexBasis: 145,
-    minHeight: 128,
-    borderRadius: 14,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  statValue: {
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: "800",
-  },
-  applicationsCard: {
-    borderRadius: 16,
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: Spacing.two,
-  },
-  sectionHeading: {
-    gap: Spacing.one,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    borderBottomWidth: 0,
-    paddingBottom: 0,
-  },
-  countBadge: {
-    minWidth: 32,
-    height: 32,
-    paddingHorizontal: Spacing.two,
-    borderRadius: 16,
+    flexBasis: "45%",
+    minHeight: 92,
     justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E0E6F7",
-  },
-  countText: {
-    color: "#233B83",
-    fontWeight: "700",
-  },
-  emptyState: {
-    alignItems: "center",
+    gap: 3,
+    padding: 15,
     borderWidth: 1,
-    borderStyle: "dashed",
-    borderRadius: 12,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    gap: Spacing.two,
+    borderColor: Colors.light.border,
+    borderRadius: 14,
+    backgroundColor: Colors.light.background,
   },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
+  metricValue: { fontSize: 27, lineHeight: 32, fontWeight: "700" },
+  textLink: { fontSize: 14, fontWeight: "600", textDecorationLine: "underline" },
+  listRow: {
+    minHeight: 67,
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#E0E6F7",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderColor: Colors.light.border,
   },
-  emptyIconText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#233B83",
+  rowCopy: { flex: 1, gap: 2 },
+  rowTitle: { fontSize: 15, lineHeight: 20, fontWeight: "600" },
+  status: {
+    overflow: "hidden",
+    borderRadius: 20,
+    backgroundColor: Colors.light.backgroundElement,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 13,
+    fontWeight: "600",
   },
-  emptyDescription: {
-    textAlign: "center",
-    lineHeight: 22,
+  emptyCard: {
+    gap: 5,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 13,
+    backgroundColor: Colors.light.backgroundElement,
+    padding: 16,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  error: {
-    color: "#B42318",
-  },
-  footer: {
-    textAlign: "center",
-  },
+  pressed: { opacity: 0.65 },
 });
