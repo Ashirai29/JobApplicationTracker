@@ -1,56 +1,46 @@
-# Welcome to your Expo app 👋
+# JobTrack
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+JobTrack is an Expo application for organizing a job search. It uses Firebase
+Authentication and Cloud Firestore, with a monochrome interface across web and
+mobile.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run locally
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Configure the Firebase project used by `src/environment.ts`, enable
+Email/Password sign-in, and create a Cloud Firestore database before signing in.
 
-### Other setup steps
+## Current workflow
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- Create, search, filter, edit, and archive job applications.
+- Track role details, application status, notes, and next steps.
+- Review append-only activity history for application changes.
+- Create reminders linked to applications and mark them complete.
+- View dashboard totals and insights derived from the signed-in user's records.
+- Use interview and follow-up prompts in the career toolkit.
+- Export applications, tasks, and status history to CSV (download on web, share as a file on mobile).
 
-## Learn more
+## Firestore access rules
 
-To learn more about developing your project with Expo, look at the following resources:
+Application, task, and activity records are stored below `users/{uid}`. The
+rules in `firestore.rules` restrict access to the authenticated owner, validate
+writes, and disallow hard deletion of application history and tasks. Configure
+the Firebase CLI for your project, then deploy the rules before using the data
+screens:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+firebase use --add
+firebase deploy --only firestore:rules
+```
 
-## Join the community
+Do not ship the app with permissive Firestore rules. Firebase client
+configuration identifies a project but does not replace server-side access
+rules.
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Reminders currently appear inside the app; push notifications, email reminders,
+document uploads, CSV import, account deletion, and external job-board
+integrations are not included.

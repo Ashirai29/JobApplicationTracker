@@ -7,17 +7,35 @@ import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { ComponentProps } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { firebaseAuth } from "@/firebase.web";
+import { ThemedText as BaseThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { AppLogo } from "@/components/app-logo";
+import { Colors, Fonts, Spacing } from "@/constants/theme";
+import { firebaseAuth } from "@/firebase";
 
 type AuthMode = "signIn" | "signUp";
+
+function ThemedText(props: ComponentProps<typeof BaseThemedText>) {
+  return (
+    <BaseThemedText
+      {...props}
+      style={[
+        styles.text,
+        Platform.select({ web: { fontFamily: Fonts.sans } }),
+        props.style,
+      ]}
+    />
+  );
+}
 
 export default function AuthScreen({ mode }: { mode?: AuthMode }) {
   const router = useRouter();
@@ -66,146 +84,234 @@ export default function AuthScreen({ mode }: { mode?: AuthMode }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.screen}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.screen}
       >
-        <View style={styles.card}>
-          <Text variant="h2" style={styles.title}>
-            {isSignUp ? "Create an account" : "Welcome back"}
-          </Text>
-          <Text style={styles.description}>
-            {isSignUp
-              ? "Create an account to start tracking your job applications and managing your opportunities."
-              : "Sign in to continue tracking your job applications and managing your opportunities."}
-          </Text>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Email address</Text>
-            <TextInput
-              accessibilityLabel="Email address"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoCorrect={false}
-              keyboardType="email-address"
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor="#788398"
-              style={styles.input}
-              value={email}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              accessibilityLabel="Password"
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-              onChangeText={setPassword}
-              onSubmitEditing={submit}
-              placeholder="Enter your password"
-              placeholderTextColor="#788398"
-              returnKeyType="done"
-              secureTextEntry
-              style={styles.input}
-              value={password}
-            />
-          </View>
-
-          {error ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {error}
-            </Text>
-          ) : null}
-
-          <Button
-            accessibilityLabel={isSignUp ? "Create account" : "Sign in"}
-            disabled={isSubmitting}
-            onPress={submit}
-            style={styles.submitButton}
-          >
-            <Text>{isSubmitting ? "Please wait..." : isSignUp ? "Create account" : "Sign in"}</Text>
-          </Button>
-
-          <View style={styles.modeSwitch}>
-            <Text>
-              {isSignUp ? "Already have an account? " : "Don't have an account? "}
-            </Text>
-            <Button
-              accessibilityLabel={
-                isSignUp ? "Switch to sign in" : "Switch to sign up"
-              }
-              onPress={() => {
-                setError("");
-                setIsSignUp(!isSignUp);
-              }}
-              variant="link"
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ThemedView style={styles.card}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace("/")}
+              style={({ pressed }) => [
+                styles.brand,
+                pressed && styles.pressed,
+              ]}
             >
-              <Text>{isSignUp ? "Sign in" : "Sign up"}</Text>
-            </Button>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <AppLogo size={38} />
+              <ThemedText style={styles.brandName}>Job tracker</ThemedText>
+            </Pressable>
+
+            <View style={styles.intro}>
+              <ThemedText style={styles.title}>
+                {isSignUp ? "Create your account" : "Welcome back"}
+              </ThemedText>
+              <ThemedText style={styles.description}>
+                {isSignUp
+                  ? "Start organizing your job applications and keep every opportunity moving forward."
+                  : "Sign in to continue tracking your job applications and managing your opportunities."}
+              </ThemedText>
+            </View>
+
+            <View style={styles.form}>
+              <View style={styles.field}>
+                <ThemedText style={styles.label}>Email address</ThemedText>
+                <TextInput
+                  accessibilityLabel="Email address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  returnKeyType="next"
+                  style={styles.input}
+                  value={email}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <ThemedText style={styles.label}>Password</ThemedText>
+                <TextInput
+                  accessibilityLabel="Password"
+                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  onChangeText={setPassword}
+                  onSubmitEditing={submit}
+                  placeholder="Enter your password"
+                  placeholderTextColor={Colors.light.textSecondary}
+                  returnKeyType="done"
+                  secureTextEntry
+                  style={styles.input}
+                  value={password}
+                />
+              </View>
+            </View>
+
+            {error ? (
+              <ThemedText accessibilityRole="alert" style={styles.error}>
+                {error}
+              </ThemedText>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSubmitting}
+              onPress={submit}
+              style={({ pressed }) => [
+                styles.submitButton,
+                isSubmitting && styles.disabled,
+                pressed && !isSubmitting && styles.pressed,
+              ]}
+            >
+              <ThemedText style={styles.submitButtonText}>
+                {isSubmitting
+                  ? "Please wait..."
+                  : isSignUp
+                    ? "Create account"
+                    : "Sign in"}
+              </ThemedText>
+            </Pressable>
+
+            <View style={styles.modeSwitch}>
+              <ThemedText style={styles.modePrompt}>
+                {isSignUp
+                  ? "Already have an account?"
+                  : "Don't have an account?"}
+              </ThemedText>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setError("");
+                  setIsSignUp(!isSignUp);
+                }}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <ThemedText style={styles.modeAction}>
+                  {isSignUp ? "Sign in" : "Sign up"}
+                </ThemedText>
+              </Pressable>
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  text: {
+    color: Colors.light.text,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
   screen: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
   },
   content: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: 24,
+    padding: Spacing.four,
   },
   card: {
     width: "100%",
     maxWidth: 480,
     alignSelf: "center",
-    gap: 20,
-    padding: 24,
-    borderRadius: 16,
+    gap: Spacing.four,
+    padding: Spacing.four,
     backgroundColor: "#FFFFFF",
+  },
+  brand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+  },
+  brandName: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  intro: {
+    gap: Spacing.two,
   },
   title: {
-    textAlign: "left",
-    borderBottomWidth: 0,
-    paddingBottom: 0,
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: "800",
+    letterSpacing: -0.6,
+    paddingBottom: Spacing.two,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
   description: {
-    color: "#536078",
+    color: Colors.light.textSecondary,
     lineHeight: 24,
+    paddingTop: Spacing.two,
+  },
+  form: {
+    gap: Spacing.three,
   },
   field: {
-    gap: 8,
+    gap: Spacing.two,
   },
   label: {
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "700",
   },
   input: {
-    minHeight: 48,
+    minHeight: 52,
     borderWidth: 1,
-    borderColor: "#D3D9E3",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    color: "#172033",
-    backgroundColor: "#FFFFFF",
+    borderColor: Colors.light.border,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two + 4,
+    color: Colors.light.text,
+    backgroundColor: Colors.light.blueTint,
+    fontFamily: Platform.select({ web: Fonts.sans }),
+    fontSize: 16,
   },
   error: {
     color: "#B42318",
+    fontSize: 15,
+    lineHeight: 22,
   },
   submitButton: {
-    minHeight: 48,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: Colors.light.royalBlue,
+  },
+  submitButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  disabled: {
+    opacity: 0.6,
   },
   modeSwitch: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     flexWrap: "wrap",
+    gap: Spacing.two,
+    paddingTop: Spacing.one,
+  },
+  modePrompt: {
+    color: Colors.light.textSecondary,
+  },
+  modeAction: {
+    color: Colors.light.purple,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });
